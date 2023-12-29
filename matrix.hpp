@@ -26,7 +26,7 @@ public:
     // constructor with io stream
     Matrix(size_t rows, size_t cols, std::istream &is);
 
-    Matrix(std::istream &is);
+    explicit Matrix(std::istream &is);
 
     // copy constructor
     Matrix(const Matrix &m);
@@ -36,6 +36,36 @@ public:
     Matrix(Matrix &&m) noexcept;
     // move assignment
     Matrix &operator=(Matrix &&m) noexcept;
+
+    // sum matrix
+    Matrix operator+(const Matrix &m) const;
+
+    [[nodiscard]] Matrix add(const Matrix &m) const;
+
+    Matrix operator+(const Matrix &m);
+
+    Matrix add(const Matrix &m);
+
+    // subtract matrix
+    Matrix operator-(const Matrix &m) const;
+
+    [[nodiscard]] Matrix sub(const Matrix &m) const;
+
+    Matrix operator-(const Matrix &m);
+
+    Matrix sub(const Matrix &m);
+
+    // multiply matrix
+    Matrix operator*(const Matrix &m) const;
+
+    [[nodiscard]] Matrix mul(const Matrix &m) const;
+
+
+
+    element at(size_t row, size_t col) const;
+
+    void set_value(size_t row, size_t col, element value);
+
     // destructor
     ~Matrix() {
         delete[] items;
@@ -112,6 +142,8 @@ Matrix::Matrix(std::istream &is) {
     // get the number of cols by counting the number of elements in the first line
     cols = lines.at(0).size();
 
+    stride = cols;
+
     // allocate memory for the matrix
     this->items = new element[rows * cols];
 
@@ -153,7 +185,7 @@ Matrix &Matrix::operator=(const Matrix &m) {
     return *this;
 }
 
-Matrix::Matrix(Matrix &&m) noexcept{
+Matrix::Matrix(Matrix &&m) noexcept : rows(0), cols(0), stride(0), items(nullptr) {
     this->rows = m.rows;
     this->cols = m.cols;
     this->stride = m.stride;
@@ -170,6 +202,8 @@ Matrix &Matrix::operator=(Matrix &&m) noexcept{
         return *this;
     }
 
+    delete[] this->items;
+
     this->rows = m.rows;
     this->cols = m.cols;
     this->stride = m.stride;
@@ -182,5 +216,89 @@ Matrix &Matrix::operator=(Matrix &&m) noexcept{
 
     return *this;
 }
+
+Matrix Matrix::operator+(const Matrix &m) const {
+    return this->add(m);
+}
+
+Matrix Matrix::add(const Matrix &m) const {
+    Matrix result(this->rows, this->cols);
+
+    for (size_t i = 0; i < this->rows * this->cols; ++i) {
+        result.items[i] = this->items[i] + m.items[i];
+    }
+
+    return result;
+}
+
+Matrix Matrix::operator+(const Matrix &m) {
+    return this->add(m);
+}
+
+Matrix Matrix::add(const Matrix &m) {
+
+    for (size_t i = 0; i < this->rows * this->cols; ++i) {
+        this->items[i] += m.items[i];
+    }
+
+    return *this;
+}
+
+Matrix Matrix::operator-(const Matrix &m) const{
+    return this->sub(m);
+}
+
+Matrix Matrix::sub(const Matrix &m) const {
+    Matrix result(this->rows, this->cols);
+
+    for (size_t i = 0; i < this->rows * this->cols; ++i) {
+        result.items[i] = this->items[i] - m.items[i];
+    }
+
+    return result;
+}
+
+Matrix Matrix::operator-(const Matrix &m) {
+    return this->sub(m);
+}
+
+Matrix Matrix::sub(const Matrix &m) {
+
+    for (size_t i = 0; i < this->rows * this->cols; ++i) {
+        this->items[i] -= m.items[i];
+    }
+
+    return *this;
+}
+
+Matrix Matrix::operator*(const Matrix &m) const{
+    return this->mul(m);
+}
+
+Matrix Matrix::mul(const Matrix &m) const {
+    // A = m * n   B = n * p   A * B = m * p
+    Matrix result(this->rows, m.cols);
+
+    for (size_t i = 0; i < this->rows; ++i) {
+        for (size_t j = 0; j < m.cols; ++j) {
+            element sum = 0;
+            for (size_t k = 0; k < this->cols; ++k) {
+                sum += this->at(i, k) * m.at(k, j);
+            }
+            result.set_value(i, j, sum);
+        }
+    }
+
+    return result;
+}
+
+element Matrix::at(size_t row, size_t col) const {
+    return this->items[row * this->stride + col];
+}
+
+void Matrix::set_value(size_t row, size_t col, element value) {
+    this->items[row * this->stride + col] = value;
+}
+
 
 #endif //KOLAKANMI_MATRIX_HPP
