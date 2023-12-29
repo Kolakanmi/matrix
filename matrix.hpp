@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <initializer_list>
 #include <istream>
+#include <sstream>
 
 using element = double;
 
@@ -24,6 +25,8 @@ public:
 
     // constructor with io stream
     Matrix(size_t rows, size_t cols, std::istream &is);
+
+    Matrix(std::istream &is);
 
     // copy constructor
     Matrix(const Matrix &m);
@@ -75,11 +78,50 @@ Matrix::Matrix(size_t rows, size_t cols, std::istream &is) {
     this->stride = cols;
     this->items = new element[rows * cols];
 
+    // use istream iterator to read data from stream
+    auto iter = std::istream_iterator<element>(is);
+    auto end = std::istream_iterator<element>();
+
+    for (size_t i = 0; i < rows * cols && iter != end; ++i) {
+        this->items[i] = *iter;
+        ++iter;
+    }
+}
+
+Matrix::Matrix(std::istream &is) {
+
+    // stream should contain elements in the form of matrix
+    // ===================
+    // 1 2 3
+    // 4 5 6
+    // 7 8 9
+    // ===================
+
+    //read stream, line by line into a vector of strings
+    std::vector<std::vector<element>> lines;
+    std::string line;
+    while (getline(is, line)) {
+        std::istringstream iss(line);
+        lines.emplace_back(std::istream_iterator<element>(iss),
+                                             std::istream_iterator<element>());
+    }
+
+    // get the number of rows and cols
+    rows = lines.size();
+
+    // get the number of cols by counting the number of elements in the first line
+    cols = lines.at(0).size();
+
+    // allocate memory for the matrix
+    this->items = new element[rows * cols];
+
+    // copy the elements from the vector of vector of elements to the matrix
     size_t i = 0;
-    // read from stream while there is still data
-    while (is) {
-        is >> this->items[i];
-        ++i;
+    for (auto &line : lines) {
+        for (auto &e : line) {
+            this->items[i] = e;
+            ++i;
+        }
     }
 }
 
