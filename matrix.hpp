@@ -68,16 +68,13 @@ public:
 
     Matrix &randomize(element min, element max);
 
-    // destructor
-    ~Matrix() {
-        delete[] items;
-    }
 private:
     size_t rows;
     size_t cols;
 
     size_t stride;
-    element *items;
+
+    std::vector<element> items;
 
     Matrix(size_t row, size_t col, size_t stride);
 };
@@ -88,43 +85,35 @@ Matrix::Matrix(size_t rows, size_t cols) {
     this->rows = rows;
     this->cols = cols;
     this->stride = cols;
-    this->items = new element[rows * cols];
+
+    this->items = std::vector<element>(rows * cols);
 }
 
 Matrix::Matrix(size_t rows, size_t cols, element *items) {
     this->rows = rows;
     this->cols = cols;
     this->stride = cols;
-    this->items = items;
+
+    this->items = std::vector<element>(items, items + rows * cols);
 }
 
 Matrix::Matrix(size_t rows, size_t cols, std::initializer_list<element> list) {
     this->rows = rows;
     this->cols = cols;
     this->stride = cols;
-    this->items = new element[rows * cols];
-
-    size_t i = 0;
-    for (auto &e : list) {
-        this->items[i] = e;
-        ++i;
-    }
+    this->items = std::vector<element>(list);
 }
 
 Matrix::Matrix(size_t rows, size_t cols, std::istream &is) {
     this->rows = rows;
     this->cols = cols;
     this->stride = cols;
-    this->items = new element[rows * cols];
+    this->items = std::vector<element>(rows * cols);
 
-    // use istream iterator to read data from stream
-    auto iter = std::istream_iterator<element>(is);
-    auto end = std::istream_iterator<element>();
-
-    for (size_t i = 0; i < rows * cols && iter != end; ++i) {
-        this->items[i] = *iter;
-        ++iter;
-    }
+    // use vector iterator to copy the elements from the stream and remove the whitespaces
+    std::copy(std::istream_iterator<element>(is),
+            std::istream_iterator<element>(),
+                    this->items.begin());
 }
 
 Matrix::Matrix(std::istream &is) {
@@ -153,9 +142,6 @@ Matrix::Matrix(std::istream &is) {
 
     stride = cols;
 
-    // allocate memory for the matrix
-    this->items = new element[rows * cols];
-
     // copy the elements from the vector of vector of elements to the matrix
     size_t i = 0;
     for (auto &l : lines) {
@@ -170,11 +156,8 @@ Matrix::Matrix(const Matrix &m) {
     this->rows = m.rows;
     this->cols = m.cols;
     this->stride = m.stride;
-    this->items = new element[m.rows * m.cols];
 
-    for (size_t i = 0; i < m.rows * m.cols; ++i) {
-        this->items[i] = m.items[i];
-    }
+    this->items = std::vector<element>(m.items.cbegin(), m.items.cend());
 }
 
 Matrix &Matrix::operator=(const Matrix &m) {
@@ -185,25 +168,23 @@ Matrix &Matrix::operator=(const Matrix &m) {
     this->rows = m.rows;
     this->cols = m.cols;
     this->stride = m.stride;
-    this->items = new element[m.rows * m.cols];
 
-    for (size_t i = 0; i < m.rows * m.cols; ++i) {
-        this->items[i] = m.items[i];
-    }
+    this->items = std::vector<element>(m.items.cbegin(), m.items.cend());
 
     return *this;
 }
 
-Matrix::Matrix(Matrix &&m) noexcept : rows(0), cols(0), stride(0), items(nullptr) {
+Matrix::Matrix(Matrix &&m) noexcept : rows(0), cols(0), stride(0) {
     this->rows = m.rows;
     this->cols = m.cols;
     this->stride = m.stride;
-    this->items = m.items;
+    this->items = std::vector<element>(m.items.cbegin(), m.items.cend());
 
     m.rows = 0;
     m.cols = 0;
     m.stride = 0;
-    m.items = nullptr;
+    // empty the vector
+    m.items = std::vector<element>();
 }
 
 Matrix &Matrix::operator=(Matrix &&m) noexcept{
@@ -211,17 +192,15 @@ Matrix &Matrix::operator=(Matrix &&m) noexcept{
         return *this;
     }
 
-    delete[] this->items;
-
     this->rows = m.rows;
     this->cols = m.cols;
     this->stride = m.stride;
-    this->items = m.items;
+    this->items = std::vector<element>(m.items.cbegin(), m.items.cend());
 
     m.rows = 0;
     m.cols = 0;
     m.stride = 0;
-    m.items = nullptr;
+    m.items = std::vector<element>();
 
     return *this;
 }
@@ -313,7 +292,7 @@ Matrix::Matrix(size_t row, size_t col, size_t stride) {
     this->rows = row;
     this->cols = col;
     this->stride = stride;
-    this->items = new element[row * col];
+    this->items = std::vector<element>(row * col);
 }
 
 Matrix Matrix::sub_matrix(size_t start_row, size_t start_col, size_t end_row, size_t end_col) const {
@@ -325,13 +304,20 @@ Matrix Matrix::sub_matrix(size_t start_row, size_t start_col, size_t end_row, si
 //
 //    auto i = this->items + (start_row * s + start_col);
 
+
+
     Matrix result = Matrix(r, c, s);
 
-    for (size_t i = start_row; i < result.rows; ++i) {
-        for (size_t j = start_col; j < result.cols; ++j) {
-            result.set_value(i - start_row, j - start_col, this->at(i, j));
-        }
-    }
+    auto beg = this->items.begin() + (start_row * s + start_col);
+    auto end = this->items.begin() + (end_row * s + end_col + 1);
+
+    result.items = std::vector<element>(beg, end);
+
+//    for (size_t i = start_row; i < result.rows; ++i) {
+//        for (size_t j = start_col; j < result.cols; ++j) {
+//            result.set_value(i - start_row, j - start_col, this->at(i, j));
+//        }
+//    }
 
     return result;
 }
@@ -343,11 +329,10 @@ Matrix Matrix::sub_matrix(size_t start_row, size_t end_row, size_t num_cols) con
 
     Matrix result = Matrix(r, c, s);
 
-    for (size_t i = start_row; i < result.rows; ++i) {
-        for (size_t j = 0; j < result.cols; ++j) {
-            result.set_value(i - start_row, j, this->at(i, j));
-        }
-    }
+    auto beg = this->items.begin() + (start_row * s);
+    auto end = this->items.begin() + (end_row * s + num_cols);
+
+    result.items = std::vector<element>(beg, end);
 
     return result;
 }
