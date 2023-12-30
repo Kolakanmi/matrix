@@ -376,6 +376,8 @@ Matrix &Matrix::randomize(element min, element max) {
     for (size_t i = 0; i < this->rows * this->cols; ++i) {
         this->items[i] = dis(gen) * (max - min) + min;
     }
+
+    return *this;
 }
 
 void print(const Matrix &m, const char *name) {
